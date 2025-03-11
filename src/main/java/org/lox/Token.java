@@ -6,16 +6,15 @@ public class Token {
     final Object literal;
     final int line;
 
-    Token(TokenType var1, String var2, Object var3, int var4) {
-        this.type = var1;
-        this.lexeme = var2;
-        this.literal = var3;
-        this.line = var4;
+    Token(TokenType type, String lexeme, Object literal, int line) {
+        this.type = type;
+        this.lexeme = lexeme;
+        this.literal = literal;
+        this.line = line;
     }
 
     public String toString() {
-        String var10000 = String.valueOf(this.type);
-        return var10000 + " " + this.lexeme + " " + String.valueOf(this.literal);
+        return type + " " + lexeme + " " + literal;
     }
 
     static enum TokenType {

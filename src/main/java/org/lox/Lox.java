@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.util.List;
 
 import org.lox.Scanner;
+import org.lox.Token.TokenType;
 
 public class Lox {
     static boolean hadError = false;
@@ -29,10 +30,11 @@ public class Lox {
         InputStreamReader input = new InputStreamReader(System.in);
         BufferedReader reader = new BufferedReader(input);
 
-        for (; ; ) {
+        for (;;) {
             System.out.print("> ");
             String line = reader.readLine();
-            if (line == null) break;
+            if (line == null)
+                break;
             run(line);
             hadError = false;
         }
@@ -53,8 +55,16 @@ public class Lox {
 
     private static void report(int line, String where, String message) {
         System.err.println(
-                "[line " + line + "] Error" + where + ": " + message
-        );
+                "[line " + line + "] Error" + where + ": " + message);
         hadError = true;
     }
+
+    static void error(Token token, String message) {
+        if (token.type == TokenType.EOF) {
+            report(token.line, " at end", message);
+        } else {
+            report(token.line, " at '" + token.lexeme + "'", message);
+        }
+    }
+
 }

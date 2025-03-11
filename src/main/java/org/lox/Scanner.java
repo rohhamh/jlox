@@ -2,118 +2,217 @@ package org.lox;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import org.lox.Token.TokenType;
+import static org.lox.Token.TokenType.*;
 
 public class Scanner {
     private final String source;
-    private final List<Token> tokens = new ArrayList();
+    private final List<Token> tokens = new ArrayList<>();
     private int start = 0;
     private int current = 0;
     private int line = 1;
+    private static final Map<String, TokenType> keywords;
+
+    static {
+        keywords = new HashMap<>();
+        keywords.put("and",     AND);
+        keywords.put("class",   CLASS);
+        keywords.put("else",    ELSE);
+        keywords.put("false",   FALSE);
+        keywords.put("for",     FOR);
+        keywords.put("fun",     FUN);
+        keywords.put("if",      IF);
+        keywords.put("nil",     NIL);
+        keywords.put("or",      OR);
+        keywords.put("print",   PRINT);
+        keywords.put("return",  RETURN);
+        keywords.put("super",   SUPER);
+        keywords.put("this",    THIS);
+        keywords.put("true",    TRUE);
+        keywords.put("var",     VAR);
+        keywords.put("while",   WHILE);
+    }
 
     Scanner(String var1) {
-        this.source = var1;
+        source = var1;
     }
 
     List<Token> scanTokens() {
-        while(!this.isAtEnd()) {
-            this.start = this.current;
-            this.scanToken();
+        while(!isAtEnd()) {
+            start = current;
+            scanToken();
         }
 
-        this.tokens.add(new Token(TokenType.EOF, "", (Object)null, this.line));
-        return this.tokens;
+        tokens.add(new Token(EOF, "", null, line));
+        return tokens;
     }
 
     private boolean isAtEnd() {
-        return this.current >= this.source.length();
+        return current >= source.length();
     }
 
     private void scanToken() {
-        char var1 = this.advance();
-        switch (var1) {
+        char c = advance();
+        switch (c) {
             case '!':
-                this.addToken(this.match('=') ? TokenType.BANG_EQUAL : TokenType.BANG);
+                addToken(match('=') ? BANG_EQUAL : BANG);
                 break;
             case '(':
-                this.addToken(TokenType.LEFT_PAREN);
+                addToken(LEFT_PAREN);
                 break;
             case ')':
-                this.addToken(TokenType.RIGHT_PAREN);
+                addToken(RIGHT_PAREN);
                 break;
             case '*':
-                this.addToken(TokenType.STAR);
+                addToken(STAR);
                 break;
             case '+':
-                this.addToken(TokenType.PLUS);
+                addToken(PLUS);
                 break;
             case ',':
-                this.addToken(TokenType.COMMA);
+                addToken(COMMA);
                 break;
             case '-':
-                this.addToken(TokenType.MINUS);
+                addToken(MINUS);
                 break;
             case '.':
-                this.addToken(TokenType.DOT);
+                addToken(DOT);
                 break;
             case '/':
-                if (this.match('/')) {
-                    while(this.peek() != '\n' && !this.isAtEnd()) {
-                        this.advance();
+                if (match('/')) {
+                    while(peek() != '\n' && !isAtEnd()) {
+                        advance();
                     }
                 } else {
-                    this.addToken(TokenType.SLASH);
+                    addToken(SLASH);
                 }
                 break;
             case ';':
-                this.addToken(TokenType.SEMICOLON);
+                addToken(SEMICOLON);
                 break;
             case '<':
-                this.addToken(this.match('=') ? TokenType.LESS_EQUAL : TokenType.LESS);
+                addToken(match('=') ? LESS_EQUAL : LESS);
                 break;
             case '=':
-                this.addToken(this.match('=') ? TokenType.EQUAL_EQUAL : TokenType.EQUAL);
+                addToken(match('=') ? EQUAL_EQUAL : EQUAL);
                 break;
             case '>':
-                this.addToken(this.match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER);
+                addToken(match('=') ? GREATER_EQUAL : GREATER);
                 break;
             case '{':
-                this.addToken(TokenType.LEFT_BRACE);
+                addToken(LEFT_BRACE);
                 break;
             case '}':
-                this.addToken(TokenType.RIGHT_BRACE);
+                addToken(RIGHT_BRACE);
+                break;
+            case ' ':
+            case '\r':
+            case '\t':
+                break;
+            case '\n':
+                line++;
+                break;
+            case '"':
+                string();
                 break;
             default:
-                Lox.error(this.line, "Unexpected character.");
+                if (isDigit(c)) {
+                    number();
+                } else if (isAlpha(c)) {
+                    identifier();
+                } else {
+                    Lox.error(line, "Unexpected character " + c + " at " + current);
+                }
+                break;
         }
 
     }
 
-    private boolean match(char var1) {
-        if (this.isAtEnd()) {
+    private boolean isDigit(char c) {
+        return '0' <= c && c <= '9';
+    }
+
+    private boolean isAlpha(char c) {
+        return ('a' <= c && c <= 'z') ||
+               ('A' <= c && c <= 'Z') ||
+               (c == '_');
+    }
+
+    private boolean isAlphaNumeric(char c) {
+        return isDigit(c) || isAlpha(c);
+    }
+
+    private void identifier() {
+        while(isAlphaNumeric(peek())) advance();
+
+        String text = source.substring(start, current);
+        TokenType type = keywords.get(text);
+        if (type == null) type = IDENTIFIER;
+
+        addToken(type);
+    }
+
+    private void number() {
+        while(isDigit(peek())) advance();
+
+        if (peek() == '.' && isDigit(peekNext())) {
+            advance();
+
+            while (isDigit(peek())) advance();
+        }
+
+        addToken(NUMBER, Double.parseDouble(source.substring(start, current)));
+    }
+
+    private char peekNext() {
+        if (current + 1 > source.length()) return '\0';
+        return source.charAt(current + 1);
+    }
+
+    private void string() {
+        while (peek() != '\"' && !isAtEnd()) {
+            if (peek() == '\n') line++;
+            advance();
+        }
+
+        if (isAtEnd()) {
+            Lox.error(line, "Untermintad string.");
+            return;
+        }
+
+        advance();
+
+        String value = source.substring(start + 1, current - 1);
+        addToken(STRING, value);
+    }
+
+    private boolean match(char expected) {
+        if (isAtEnd()) {
             return false;
-        } else if (this.source.charAt(this.current) != var1) {
+        } else if (source.charAt(current) != expected) {
             return false;
         } else {
-            ++this.current;
+            ++current;
             return true;
         }
     }
 
     private char peek() {
-        return this.isAtEnd() ? '\u0000' : this.source.charAt(this.current);
+        return isAtEnd() ? '\u0000' : source.charAt(current);
     }
 
     private char advance() {
-        return this.source.charAt(this.current++);
+        return source.charAt(current++);
     }
 
-    private void addToken(Token.TokenType var1) {
-        this.addToken(var1, (Object)null);
+    private void addToken(TokenType type) {
+        addToken(type, null);
     }
 
-    private void addToken(Token.TokenType var1, Object var2) {
-        String var3 = this.source.substring(this.start, this.current);
-        this.tokens.add(new Token(var1, var3, var2, this.line));
+    private void addToken(TokenType type, Object literal) {
+        String text = source.substring(start, current);
+        tokens.add(new Token(type, text, literal, line));
     }
 }

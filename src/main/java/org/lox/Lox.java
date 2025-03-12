@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.util.List;
 
 import org.lox.Scanner;
+import org.lox.Parser;
 import org.lox.Token.TokenType;
 
 public class Lox {
@@ -43,10 +44,13 @@ public class Lox {
     private static void run(String source) {
         Scanner scanner = new Scanner(source);
         List<Token> tokens = scanner.scanTokens();
+        Parser parser = new Parser(tokens);
 
-        for (Token token : tokens) {
-            System.out.println(token);
-        }
+        Expr expression = parser.parse();
+
+        if (hadError) return;
+
+        System.out.println(new AstPrinter().print(expression));
     }
 
     static void error(int line, String message) {

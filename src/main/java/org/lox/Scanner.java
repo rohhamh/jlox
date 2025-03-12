@@ -35,8 +35,8 @@ public class Scanner {
         keywords.put("while",   WHILE);
     }
 
-    Scanner(String var1) {
-        source = var1;
+    Scanner(String source) {
+        this.source = source;
     }
 
     List<Token> scanTokens() {

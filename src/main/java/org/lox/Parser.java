@@ -9,7 +9,7 @@ import static org.lox.Token.TokenType.*;
 /**
  * The grammar:
  *
- * expression → equality ;
+ * expression → (equality,)* | equality;
  * equality → comparison ( ( "!=" | "==" ) comparison )* ;
  * comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
  * term → factor ( ( "-" | "+" ) factor )* ;
@@ -37,8 +37,13 @@ public class Parser {
     }
   }
 
+  // expression → (equality,)* | equality;
   private Expr expression() {
-    return equality();
+    Expr expr = equality();
+    while(match(COMMA)) {
+      expr = equality();
+    }
+    return expr;
   }
 
   private Expr equality() {

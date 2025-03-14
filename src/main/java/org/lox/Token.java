@@ -34,6 +34,8 @@ public class Token {
         EQUAL,
         EQUAL_EQUAL,
         GREATER,
+        QUESTION,
+        COLON,
         GREATER_EQUAL,
         LESS,
         LESS_EQUAL,

@@ -59,6 +59,12 @@ public class Scanner {
             case '!':
                 addToken(match('=') ? BANG_EQUAL : BANG);
                 break;
+            case '?':
+                addToken(QUESTION);
+                break;
+            case ':':
+                addToken(COLON);
+                break;
             case '(':
                 addToken(LEFT_PAREN);
                 break;

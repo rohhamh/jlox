@@ -1,21 +1,22 @@
 package org.lox;
 
+import org.lox.Expr.Assign;
+import org.lox.Expr.Variable;
 import org.lox.Token.TokenType;
 
 public class AstPrinter implements Expr.Visitor<String> {
 
   public static void main(String[] args) {
     Expr expressiong = new Expr.Binary(
-      new Expr.Unary(
-        new Token(TokenType.MINUS, "-", null, 1),
-        new Expr.Literal(123)
-      ),
-      new Token(TokenType.STAR, "*", null, 1),
-      new Expr.Grouping(new Expr.Literal(45.67))
-    );
+        new Expr.Unary(
+            new Token(TokenType.MINUS, "-", null, 1),
+            new Expr.Literal(123)),
+        new Token(TokenType.STAR, "*", null, 1),
+        new Expr.Grouping(new Expr.Literal(45.67)));
 
     System.out.println(new AstPrinter().print(expressiong));
   }
+
   String print(Expr expr) {
     return expr.accept(this);
   }
@@ -23,6 +24,12 @@ public class AstPrinter implements Expr.Visitor<String> {
   @Override
   public String visitBinaryExpr(Expr.Binary expr) {
     return parenthesize(expr.operator.lexeme, expr.left, expr.right);
+  }
+
+  @Override
+  public String visitTernaryExpr(Expr.Ternary expr) {
+    return "(" + expr.first.accept(this) + ") " + expr.operator1.lexeme + " (" + expr.second.accept(this) + ") "
+        + expr.operator2.lexeme + " (" + expr.last.accept(this) + ")";
   }
 
   @Override
@@ -42,6 +49,12 @@ public class AstPrinter implements Expr.Visitor<String> {
     return parenthesize(expr.operator.lexeme, expr.right);
   }
 
+  @Override
+  public String visitVariableExpr(Variable expr) {
+    // TODO Auto-generated method stub
+    throw new UnsupportedOperationException("Unimplemented method 'visitVariableExpr'");
+  }
+
   private String parenthesize(String name, Expr... exprs) {
     StringBuilder builder = new StringBuilder();
 
@@ -53,5 +66,11 @@ public class AstPrinter implements Expr.Visitor<String> {
     builder.append(")");
 
     return builder.toString();
+  }
+
+  @Override
+  public String visitAssignExpr(Assign expr) {
+    // TODO Auto-generated method stub
+    throw new UnsupportedOperationException("Unimplemented method 'visitAssignExpr'");
   }
 }

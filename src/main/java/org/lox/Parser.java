@@ -1,5 +1,6 @@
 package org.lox;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.lox.Token.TokenType;
@@ -9,13 +10,22 @@ import static org.lox.Token.TokenType.*;
 /**
  * The grammar:
  *
- * expression → (equality,)* | equality;
+ * program → declaration* EOF;
+ * declaration → varDecl | statement;
+ * varDecl → "var" IDENTIFIER ("=" expression)? ";";
+ * statement → exprStmt | printStmt | block;
+ * block → "{" declaration* "}";
+ * exprStmt → expression ";";
+ * printStmt → "print" expression ";";
+ * expression → (assignment,)* | assignment;
+ * assignment → IDENTIFIER "=" assignment | ternary;
+ * ternary → equality ( "?" ternary ":" ternary )?;
  * equality → comparison ( ( "!=" | "==" ) comparison )* ;
  * comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
  * term → factor ( ( "-" | "+" ) factor )* ;
  * factor → unary ( ( "/" | "*" ) unary )* ;
  * unary → ( "!" | "-" ) unary | primary ;
- * primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
+ * primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER;
  */
 
 public class Parser {
@@ -29,19 +39,102 @@ public class Parser {
     this.tokens = tokens;
   }
 
-  Expr parse() {
+  List<Stmt> parse() {
+    List<Stmt> statements = new ArrayList<>();
+    while (!isAtEnd()) {
+      statements.add(declaration());
+    }
+    return statements;
+  }
+
+  private Stmt declaration() {
     try {
-      return expression();
-    } catch (ParseError error) {
+      if (match(VAR)) return varDeclaration();
+      return statement();
+    } catch (ParseError e) {
+      synchronize();
       return null;
     }
   }
 
-  // expression → (equality,)* | equality;
+  private Stmt statement() {
+    if (match(PRINT)) return printStatement();
+    if (match(LEFT_BRACE)) return new Stmt.Block(block());
+
+    return expressionStatement();
+  }
+
+  private Stmt printStatement() {
+    Expr value = expression();
+    consume(SEMICOLON, "Expected ';' after value.");
+    return new Stmt.Print(value);
+  }
+
+  private Stmt varDeclaration() {
+    Token name = consume(IDENTIFIER, "Expect variable name.");
+
+    Expr initializer = null;
+    if (match(EQUAL)) {
+      initializer = expression();
+    }
+
+    consume(SEMICOLON, "Expect ';' after variable declaration.");
+    return new Stmt.Var(name, initializer);
+  }
+
+  private Stmt expressionStatement() {
+    Expr value = expression();
+    consume(SEMICOLON, "Expected ';' after value.");
+    return new Stmt.Expression(value);
+  }
+
+  private List<Stmt> block() {
+    List<Stmt> statements = new ArrayList<>();
+
+    while (!check(RIGHT_BRACE) && !isAtEnd()) {
+      statements.add(declaration());
+    }
+
+    consume(RIGHT_BRACE, "Expect '}' after block.");
+    return statements;
+  }
+
+  // expression → (ternary,)* | ternary;
   private Expr expression() {
+    Expr expr = assignment();
+    while (match(COMMA)) {
+      expr = assignment();
+    }
+    return expr;
+  }
+
+  private Expr assignment() {
+    Expr expr = ternary();
+    if (match(EQUAL)) {
+      Token equals = previous();
+      Expr value = assignment();
+
+      if (expr instanceof Expr.Variable) {
+        Token name = ((Expr.Variable)expr).name;
+        return new Expr.Assign(name, value);
+      }
+
+      error(equals, "Invalid assignment target.");
+    }
+
+    return expr;
+  }
+
+  // ternary → equality ( "?" ternary ":" ternary )?;
+  private Expr ternary() {
     Expr expr = equality();
-    while(match(COMMA)) {
-      expr = equality();
+    if (match(QUESTION)) {
+      Token question = previous();
+      Expr expr1 = ternary();
+      consume(COLON, "Expected ':'.");
+      Token colon = previous();
+      Expr expr2 = ternary();
+      expr = new Expr.Ternary(expr, question, expr1, colon, expr2);
     }
     return expr;
   }
@@ -119,6 +212,10 @@ public class Parser {
 
     if (match(NUMBER, STRING)) {
       return new Expr.Literal(previous().literal);
+    }
+
+    if (match(IDENTIFIER)) {
+      return new Expr.Variable(previous());
     }
 
     if (match(LEFT_PAREN)) {
